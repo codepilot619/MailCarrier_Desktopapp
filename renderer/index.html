@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+  <title>Mail Carrier</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">MC</div>
+      <div>
+        <h1>Mail Carrier</h1>
+        <p id="brand-tagline">Send through the Gmail account signed in to each MoreLogin browser.</p>
+      </div>
+    </div>
+    <div class="connection">
+      <div id="morelogin-fields" class="morelogin-fields">
+        <label>MoreLogin API
+          <input id="api-base" type="text" spellcheck="false" autocomplete="off" value="http://127.0.0.1:40000">
+        </label>
+        <label>API token
+          <input id="api-token" type="password" spellcheck="false" autocomplete="off" placeholder="Only if auth is on">
+        </label>
+      </div>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+    <p id="banner" class="banner" hidden></p>
+  </header>
+
+  <div class="status-bar">
+    <p id="connection-status" class="connection-status">Not connected yet.</p>
+  </div>
+
+  <nav id="jobs" class="jobs" aria-label="Jobs. Each one runs on its own.">
+    <button id="job-warmup" class="job is-current" type="button" data-tab="warmup" aria-pressed="true">
+      <span class="job-top"><span class="job-name">Business</span><span class="job-state">Ready</span></span>
+      <span class="job-detail">Warm up one business inbox</span>
+    </button>
+    <button id="job-peer" class="job" type="button" data-tab="peer" aria-pressed="false">
+      <span class="job-top"><span class="job-name">Gmail</span><span class="job-state">Ready</span></span>
+      <span class="job-detail">Warm up between your Gmail accounts</span>
+    </button>
+    <button id="job-followup" class="job" type="button" data-tab="followup" aria-pressed="false">
+      <span class="job-top"><span class="job-name">Follow-up</span><span class="job-state">Ready</span></span>
+      <span class="job-detail">Reply to mail you already sent</span>
+    </button>
+    <button id="job-analyse" class="job" type="button" data-tab="analyse" aria-pressed="false">
+      <span class="job-top"><span class="job-name">Analyse</span><span class="job-state">Ready</span></span>
+      <span class="job-detail">Read delivery reports in sent mail</span>
+    </button>
+    <button id="job-contacts" class="job" type="button" data-tab="contacts" aria-pressed="false">
+      <span class="job-top"><span class="job-name">Contacts</span><span class="job-state">Ready</span></span>
+      <span class="job-detail">Send to client lists</span>
+    </button>
+  </nav>
+
+  <main>
+    <section class="panel job-panel">
+      <div class="tabs campaign-tabs visually-hidden" role="tablist" aria-hidden="true">
+        <button id="tab-warmup" type="button" role="tab" aria-selected="true" aria-controls="pane-warmup" title="Warm up using a business email">Business<span class="tab-pip" data-state="idle" hidden></span></button>
+        <button id="tab-peer" type="button" role="tab" aria-selected="false" aria-controls="pane-peer" title="Warm up between Gmail accounts">Gmail<span class="tab-pip" data-state="idle" hidden></span></button>
+        <button id="tab-followup" type="button" role="tab" aria-selected="false" aria-controls="pane-followup" title="Follow up on emails sent on a chosen day">Follow-up<span class="tab-pip" data-state="idle" hidden></span></button>
+        <button id="tab-analyse" type="button" role="tab" aria-selected="false" aria-controls="pane-analyse" title="Read Mail Delivery Subsystem reports in sent mail">Analyse<span class="tab-pip" data-state="idle" hidden></span></button>
+        <button id="tab-contacts" type="button" role="tab" aria-selected="false" aria-controls="pane-contacts" title="Send to client lists">Contacts<span class="tab-pip" data-state="idle" hidden></span></button>
+      </div>
+      <p id="last-history" class="history"></p>
+      <div class="panel-body">
+        <div id="pane-warmup" role="tabpanel">
+          <div class="pane-intro">
+            <h2 class="pane-title">Business warm-up</h2>
+            <p class="help">Add business inboxes, pick one recipient, then start. Each checked Gmail sends that inbox one email. Click a Gmail to see its send record.</p>
+          </div>
+          <div class="form-block">
+            <h3 class="block-label">Business inboxes</h3>
+            <div id="warmup-list" class="business-list" role="radiogroup" aria-label="Business email"></div>
+            <p id="warmup-empty" class="help">No business emails yet.</p>
+            <label class="field" for="warmup-email">Business email
+              <input id="warmup-email" type="email" spellcheck="false" autocomplete="off" placeholder="name@company.com">
+            </label>
+            <div class="split">
+              <label class="field" for="warmup-client">First name
+                <input id="warmup-client" type="text" autocomplete="off">
+              </label>
+              <label class="field" for="warmup-company">Company name
+                <input id="warmup-company" type="text" autocomplete="off">
+              </label>
+            </div>
+            <div class="row-actions">
+              <button id="warmup-add" type="button">Add business</button>
+              <button id="warmup-cancel" type="button" class="linkish" hidden>Cancel</button>
+            </div>
+          </div>
+          <div class="form-block">
+            <h3 class="block-label">Timing</h3>
+            <label class="field" for="warmup-interval">Seconds between warm-up emails
+              <span class="time-line">
+                <input id="warmup-interval" type="number" min="3" max="86400" value="600">
+                <span id="warmup-interval-hint" class="time-hint">10 min</span>
+              </span>
+            </label>
+            <p class="help">One email per checked Gmail, with this wait between them.</p>
+            <label class="checkline" for="use-custom-templates-warmup">
+              <input id="use-custom-templates-warmup" type="checkbox">
+              Use my subject and body templates
+            </label>
+            <p class="help">This is the same choice as on Contacts and Gmail warm-up. Subjects and bodies are edited on Contacts. Each email picks one of each at random. Leave this off to use the built-in language templates.</p>
+          </div>
+          <details class="more">
+            <summary>What gets sent</summary>
+            <p class="help">The message uses the email language from Contacts and your name on that Gmail. When Use my subject and body templates is checked, those templates are used.</p>
+          </details>
+          <label class="checkline" for="warmup-mention-attachment" hidden>
+            <input id="warmup-mention-attachment" type="checkbox" checked>
+            Add the sentence about the attached resume
+          </label>
+        </div>
+
+        <div id="pane-peer" role="tabpanel" hidden>
+          <div class="pane-intro">
+            <h2 class="pane-title">Gmail warm-up</h2>
+            <p class="help">Checked Gmail accounts email each other once, then reply. Connections stay until you clear them. Click a Gmail to see its send record, including replies.</p>
+          </div>
+          <div class="form-block">
+            <h3 class="block-label">Connections</h3>
+            <p id="peer-connections" class="help">No connections saved.</p>
+            <div class="row-actions">
+              <button id="peer-show-connections" type="button" class="secondary">Show connections</button>
+              <button id="peer-clear-connections" type="button" class="linkish">Clear connections</button>
+            </div>
+          </div>
+          <div class="form-block">
+            <h3 class="block-label">Run settings</h3>
+            <label class="field" for="peer-interval">Seconds between warm-up emails
+              <span class="time-line">
+                <input id="peer-interval" type="number" min="3" max="86400" value="600">
+                <span id="peer-interval-hint" class="time-hint">10 min</span>
+              </span>
+            </label>
+            <label class="field" for="peer-periods">Warm-up periods
+              <input id="peer-periods" type="number" min="1" max="30" value="1">
+            </label>
+            <p class="help">This wait sits between the emails and between the replies.</p>
+            <label class="checkline" for="use-custom-templates-peer">
+              <input id="use-custom-templates-peer" type="checkbox">
+              Use my subject and body templates
+            </label>
+            <p class="help">This is the same choice as on Contacts and Business warm-up. The first email uses those templates. Subjects and bodies are edited on Contacts. The subject ends with (w-u) unless you use a custom index.</p>
+            <label class="checkline" for="use-custom-warmup-index">
+              <input id="use-custom-warmup-index" type="checkbox">
+              Use a custom index
+            </label>
+            <div id="custom-warmup-index-editor" hidden>
+              <label class="field" for="warmup-index">Index after the subject
+                <input id="warmup-index" type="text" maxlength="40" placeholder="w-u" autocomplete="off" spellcheck="false">
+              </label>
+              <p class="help">Type the word only, such as hello. The subject ends with (hello), and replies search for that same text.</p>
+            </div>
+          </div>
+          <div class="form-block">
+            <h3 class="block-label">Reply emails</h3>
+            <label class="checkline" for="use-custom-replies">
+              <input id="use-custom-replies" type="checkbox">
+              Use my reply emails
+            </label>
+            <p class="help">Checked: each warm-up reply picks one email from this list at random. Unchecked: each reply uses a built-in reply.</p>
+            <div id="custom-reply-editor" hidden>
+              <p class="help">Search the list and click a line to read the full reply. [Name] and {sender} are your first name, [Recipient] is the other Gmail's first name, and [Company] is Metaroom. Import a CSV or TXT file to add many replies. In TXT, put --- on its own line between replies. In CSV, each row is one reply. Download TXT and CSV saves sample reply files.</p>
+              <label class="field" for="custom-reply-input">Reply email
+                <textarea id="custom-reply-input" rows="4" maxlength="8000" placeholder="Thanks for your email.&#10;&#10;Best regards,&#10;[Name]"></textarea>
+              </label>
+              <div class="row-actions">
+                <button id="custom-reply-add" type="button" class="secondary">Add reply</button>
+                <button id="custom-reply-import" type="button" class="secondary">Import</button>
+                <button id="custom-reply-sample" type="button" class="secondary">Download TXT and CSV</button>
+              </div>
+              <div class="template-browser" data-template-browser="custom-reply-list">
+                <div class="template-browser-bar">
+                  <input type="search" data-template-search placeholder="Search replies" aria-label="Search replies">
+                  <span class="template-count" data-template-count></span>
+                </div>
+                <ul id="custom-reply-list" class="template-list"></ul>
+                <div class="template-pager" data-template-pager hidden>
+                  <button type="button" class="secondary" data-template-page="prev">Previous</button>
+                  <span data-template-page-label></span>
+                  <button type="button" class="secondary" data-template-page="next">Next</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <details class="more">
+            <summary>Daily warm-up plan</summary>
+            <p class="help">A checked Gmail starts at a small daily max. The max rises each day until the cap. Apply today's max saves this plan. Run today's warm-up starts the Gmail warm-up once today. Start Gmail warm-up still runs whenever you press it.</p>
+            <div class="split split-3">
+              <label class="field" for="warmup-plan-start">Starting max
+                <input id="warmup-plan-start" type="number" min="1" max="500" value="5">
+              </label>
+              <label class="field" for="warmup-plan-step">Add each day
+                <input id="warmup-plan-step" type="number" min="0" max="500" value="5">
+              </label>
+              <label class="field" for="warmup-plan-cap">Cap
+                <input id="warmup-plan-cap" type="number" min="1" max="500" value="20">
+              </label>
+            </div>
+            <p id="warmup-plan-today" class="help">Today's max is 5.</p>
+            <div class="row-actions">
+              <button id="warmup-plan-apply" type="button" class="secondary">Apply today's max</button>
+              <button id="warmup-plan-run" type="button">Run today's warm-up</button>
+            </div>
+          </details>
+          <details class="more">
+            <summary>How a period works</summary>
+            <p class="help">Each checked Gmail sends one job email to the next checked Gmail it is not connected to. One Gmail receives at most 3 warm-up emails in a period. If that Gmail already has 3, the sender emails another selected Gmail that is not connected yet and still has fewer than 3. The company name is Metaroom. The first email uses the built-in language templates, or your subject and body templates when that checkbox is on. The subject ends with (w-u), or with your custom index when that box is checked. If one Gmail hits an error, warm-up continues with the next Gmail. After the last email, the app waits 15 seconds, then each mailbox replies once for every warm-up email it got. Use my reply emails picks one saved reply at random. Leave that checkbox off to use a built-in reply. The reply search uses the same index, in:anywhere w-u unless you set a custom index. If a message is in Spam, the app clicks Report not spam after the reply. The Gmail that sent that email is marked Warming up. If that email was not in Spam, the Gmail that sent it is marked Active. One Spam message keeps that sending Gmail on Warming up. Later periods go to a Gmail that is not connected yet.</p>
+          </details>
+        </div>
+
+        <div id="pane-followup" role="tabpanel" hidden>
+          <div class="pane-intro">
+            <h2 class="pane-title">Follow-up</h2>
+            <p class="help">Reply to mail sent on this date. A date on a Gmail row overrides it. {sender} and [Name] are that Gmail's first name. Click a Gmail to see its send record.</p>
+          </div>
+          <div class="form-block">
+            <h3 class="block-label">One-shot follow-up</h3>
+            <label class="field" for="followup-date">Sent date for all
+              <input id="followup-date" type="date">
+            </label>
+            <label class="field" for="followup-body">Follow-up email
+              <textarea id="followup-body" rows="6" spellcheck="true" placeholder="Hi,&#10;&#10;Just following up on my previous email.&#10;&#10;Best regards,&#10;{sender}"></textarea>
+            </label>
+            <label class="checkline" for="use-custom-followups">
+              <input id="use-custom-followups" type="checkbox">
+              Use my follow-up emails
+            </label>
+            <p class="help">Checked: each follow-up picks one email from this list at random. Unchecked: each follow-up uses the email above.</p>
+            <div id="custom-followup-editor" hidden>
+              <p class="help">Search the list and click a line to read the full follow-up. {sender} and [Name] are that Gmail's first name. Import a CSV or TXT file to add many follow-ups. In TXT, put --- on its own line between follow-ups. In CSV, each row is one follow-up. Download TXT and CSV saves sample follow-up files.</p>
+              <label class="field" for="custom-followup-input">Follow-up email to add
+                <textarea id="custom-followup-input" rows="4" maxlength="8000" placeholder="Hi,&#10;&#10;Just checking in.&#10;&#10;Best regards,&#10;[Name]"></textarea>
+              </label>
+              <div class="row-actions">
+                <button id="custom-followup-add" type="button" class="secondary">Add follow-up</button>
+                <button id="custom-followup-import" type="button" class="secondary">Import</button>
+                <button id="custom-followup-sample" type="button" class="secondary">Download TXT and CSV</button>
+              </div>
+              <div class="template-browser" data-template-browser="custom-followup-list">
+                <div class="template-browser-bar">
+                  <input type="search" data-template-search placeholder="Search follow-ups" aria-label="Search follow-ups">
+                  <span class="template-count" data-template-count></span>
+                </div>
+                <ul id="custom-followup-list" class="template-list"></ul>
+                <div class="template-pager" data-template-pager hidden>
+                  <button type="button" class="secondary" data-template-page="prev">Previous</button>
+                  <span data-template-page-label></span>
+                  <button type="button" class="secondary" data-template-page="next">Next</button>
+                </div>
+              </div>
+            </div>
+            <label class="field" for="followup-interval">Seconds between Gmail accounts
+              <span class="time-line">
+                <input id="followup-interval" type="number" min="10" max="86400" value="600">
+                <span id="followup-interval-hint" class="time-hint">10 min</span>
+              </span>
+            </label>
+            <p class="help">After one Gmail sends a follow-up, the next selected Gmail waits this long, give or take 5 seconds. The shortest choice is 10 seconds. A Gmail with no matching mail is skipped, and the next one starts immediately.</p>
+          </div>
+          <details class="more">
+            <summary>Scheduled sequence</summary>
+            <p class="help">After a client email is sent, step 1 and step 2 go out when their days have passed. A reply or a bounced address stops the sequence. A step with its own email keeps that text. An empty step uses a saved follow-up email when that checkbox is on, and otherwise uses the follow-up email above. The follow-up button still uses the sent date.</p>
+            <div class="split">
+              <label class="field" for="followup-step1-days">Step 1 after days
+                <input id="followup-step1-days" type="number" min="0" max="365" value="3">
+              </label>
+              <label class="field" for="followup-step2-days">Step 2 after days
+                <input id="followup-step2-days" type="number" min="0" max="365" value="7">
+              </label>
+            </div>
+            <label class="field" for="followup-step1-body">Step 1 email
+              <textarea id="followup-step1-body" rows="3" spellcheck="true" placeholder="Leave empty to use the follow-up above, or a saved follow-up when that box is on."></textarea>
+            </label>
+            <label class="field" for="followup-step2-body">Step 2 email
+              <textarea id="followup-step2-body" rows="3" spellcheck="true" placeholder="Leave empty to use the follow-up above, or a saved follow-up when that box is on."></textarea>
+            </label>
+            <div class="row-actions">
+              <button id="followup-sequence" type="button">Run due follow-ups</button>
+            </div>
+          </details>
+          <details class="more">
+            <summary>Which emails get a reply</summary>
+            <p class="help">The app searches that day's Sent mail for threads that still have only one message from you. A draft in that thread is deleted before the reply. Selected Gmails take turns, one follow-up each, until each reaches its Max. Once a search has no matches left, that Gmail is not searched again. If one Gmail hits an error, follow-up continues with the next Gmail.</p>
+          </details>
+        </div>
+
+        <div id="pane-analyse" role="tabpanel" hidden>
+          <div class="pane-intro">
+            <h2 class="pane-title">Analyse delivery</h2>
+            <p class="help">Checked Gmail accounts open, search sent mail for this period, and read messages from Mail Delivery Subsystem.</p>
+          </div>
+          <div class="form-block">
+            <h3 class="block-label">Search window</h3>
+            <div class="split">
+              <label class="field" for="analyse-from">From
+                <input id="analyse-from" type="date">
+              </label>
+              <label class="field" for="analyse-to">To
+                <input id="analyse-to" type="date">
+              </label>
+            </div>
+            <label class="field" for="analyse-limit">Sent emails to open on each Gmail
+              <input id="analyse-limit" type="number" min="1" max="200" value="40">
+            </label>
+            <p class="help">Each opened email is checked for a delivery report. Click a Gmail to see its counts, client emails, and first names.</p>
+          </div>
+        </div>
+
+        <div id="pane-contacts" role="tabpanel" hidden>
+          <div class="pane-intro">
+            <h2 class="pane-title">Contacts</h2>
+            <p class="help">Gmail accounts without their own list send this shared list. Import a list on a Gmail when that account should email different people. Click a Gmail to see its send record.</p>
+          </div>
+          <div class="form-block">
+            <h3 class="block-label">Shared list</h3>
+            <div class="row-actions">
+              <button id="import-contacts" type="button">Import shared list</button>
+              <button id="clear-contacts" type="button" class="linkish">Clear</button>
+            </div>
+            <p id="client-summary" class="help">No client record yet.</p>
+            <div class="row-actions">
+              <button id="client-show" type="button" class="secondary">Show client record</button>
+            </div>
+            <div id="contacts-preview" class="preview">
+              <p class="help">No shared contacts yet.</p>
+            </div>
+          </div>
+          <div class="form-block">
+            <h3 class="block-label">Message</h3>
+            <label class="field" for="email-language">Email language
+              <select id="email-language">
+                <option value="en">English</option>
+                <option value="zh">中文 (简体)</option>
+                <option value="hi">हिन्दी (Hindi)</option>
+                <option value="de">Deutsch</option>
+              </select>
+            </label>
+            <label class="checkline" for="mention-attachment">
+              <input id="mention-attachment" type="checkbox" checked>
+              Add the sentence about the attached resume
+            </label>
+            <label class="checkline" for="use-custom-templates">
+              <input id="use-custom-templates" type="checkbox">
+              Use my subject and body templates
+            </label>
+            <div id="custom-template-editor" hidden>
+              <p class="help">Each new email picks one subject and one body at random. Search a list and click a line to read the full text. [Name] is your name, [Company] is the company, and [Recipient] is the first name. Leave this off to use the built-in language templates. The same checkbox is on Business warm-up and Gmail warm-up. Warm-up replies and follow-up emails have their own lists. Import a CSV or TXT file to add many at once. In TXT, put one subject on each line, and put --- on its own line between bodies. In CSV, each row is one text. Download TXT and CSV saves sample files for both lists.</p>
+              <label class="field" for="custom-subject-input">Subject templates
+                <span class="template-add">
+                  <input id="custom-subject-input" type="text" maxlength="200" placeholder="Ready to help [Company]">
+                  <button id="custom-subject-add" type="button" class="secondary">Add</button>
+                  <button id="custom-subject-import" type="button" class="secondary">Import</button>
+                </span>
+              </label>
+              <div class="template-browser" data-template-browser="custom-subject-list">
+                <div class="template-browser-bar">
+                  <input type="search" data-template-search placeholder="Search subjects" aria-label="Search subjects">
+                  <span class="template-count" data-template-count></span>
+                </div>
+                <ul id="custom-subject-list" class="template-list"></ul>
+                <div class="template-pager" data-template-pager hidden>
+                  <button type="button" class="secondary" data-template-page="prev">Previous</button>
+                  <span data-template-page-label></span>
+                  <button type="button" class="secondary" data-template-page="next">Next</button>
+                </div>
+              </div>
+              <label class="field" for="custom-body-input">Body templates
+                <textarea id="custom-body-input" rows="5" maxlength="8000" placeholder="Hello [Recipient],&#10;&#10;I am [Name] from [Company]."></textarea>
+              </label>
+              <div class="row-actions">
+                <button id="custom-body-add" type="button" class="secondary">Add body</button>
+                <button id="custom-body-import" type="button" class="secondary">Import</button>
+                <button id="custom-template-sample" type="button" class="secondary">Download TXT and CSV</button>
+              </div>
+              <div class="template-browser" data-template-browser="custom-body-list">
+                <div class="template-browser-bar">
+                  <input type="search" data-template-search placeholder="Search bodies" aria-label="Search bodies">
+                  <span class="template-count" data-template-count></span>
+                </div>
+                <ul id="custom-body-list" class="template-list"></ul>
+                <div class="template-pager" data-template-pager hidden>
+                  <button type="button" class="secondary" data-template-page="prev">Previous</button>
+                  <span data-template-page-label></span>
+                  <button type="button" class="secondary" data-template-page="next">Next</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-block">
+            <h3 class="block-label">Timing</h3>
+            <label class="field" for="interval-time">Seconds between emails from the same Gmail
+              <span class="time-line">
+                <input id="interval-time" type="number" min="3" max="86400" value="600">
+                <span id="interval-time-hint" class="time-hint">10 min</span>
+              </span>
+            </label>
+            <p class="help">After a Gmail sends one email, it waits this long before its next person. Other accounts can still send during the wait. If one email hits an error, sending continues with the next person.</p>
+            <label class="field" for="between-accounts">Seconds between Gmail accounts
+              <span class="time-line">
+                <input id="between-accounts" type="number" min="10" max="86400" value="10">
+                <span id="between-accounts-hint" class="time-hint">10 sec</span>
+              </span>
+            </label>
+            <p class="help">The next Gmail waits this long, give or take 5 seconds. The shortest choice is 10 seconds.</p>
+          </div>
+          <details class="more">
+            <summary>Lists, columns, and send times</summary>
+            <p class="help">CSV, Excel, and other spreadsheets work. Headers: First Name, Name, or Full Name. Email, Email Address, or E-mail. Company Name for Emails, Company Name, or Company. A Gmail with its own list stays on that list. Check Send at a time on a Gmail when it should wait. That time is required. Leave it unchecked and that Gmail sends when you press Start.</p>
+          </details>
+        </div>
+      </div>
+      <div class="panel-actions">
+        <p id="action-note" class="action-note"></p>
+        <div id="status" class="status"></div>
+        <div class="action-buttons">
+          <button id="warmup-start" type="button" disabled>Start warming up</button>
+          <button id="peer-warmup-start" type="button" hidden disabled>Start Gmail warm-up</button>
+          <button id="followup-start" type="button" hidden disabled>Start follow-up</button>
+          <button id="analyse-start" type="button" hidden disabled>Start analysing</button>
+          <button id="start" type="button" hidden disabled>Start Sending Emails</button>
+          <button id="pause" type="button" class="secondary" hidden>Pause</button>
+          <button id="resume" type="button" class="secondary" hidden>Resume Sending</button>
+          <button id="stop" type="button" class="danger" hidden>Stop Sending</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel browser-panel">
+      <div class="panel-head">
+        <div>
+          <div class="tabs source-tabs" role="tablist">
+            <button id="source-morelogin" type="button" role="tab" aria-selected="true">MoreLogin</button>
+            <button id="source-chrome" type="button" role="tab" aria-selected="false">Chrome</button>
+          </div>
+          <h2 id="browser-title">MoreLogin browsers</h2>
+        </div>
+        <p id="profile-count" class="help"></p>
+      </div>
+      <div class="toolbar toolbar-filters">
+        <input id="profile-search" type="search" placeholder="Search profiles or Gmail" spellcheck="false">
+        <label class="inline" id="default-limit-label">Max
+          <input id="default-limit" type="number" min="1" value="20">
+        </label>
+        <label class="inline">Select by status
+          <select id="status-pick" title="Check every Gmail with this status on the open tab">
+            <option value="">Choose</option>
+          </select>
+        </label>
+        <button id="apply-limit" type="button" class="secondary">Apply to all</button>
+      </div>
+      <div class="toolbar toolbar-actions">
+        <button id="select-all" type="button" class="linkish">Select all</button>
+        <button id="clear-all" type="button" class="linkish">Clear</button>
+        <button id="expand-all" type="button" class="linkish" title="Open every browser and show its Gmail accounts">Expand all</button>
+        <button id="collapse-all" type="button" class="linkish" title="Close every browser and hide its Gmail accounts">Collapse all</button>
+        <button id="show-selected" type="button" class="linkish" aria-pressed="false">Show selected</button>
+        <span class="toolbar-spacer" aria-hidden="true"></span>
+        <button id="open-selected" type="button" class="secondary">Open</button>
+        <button id="read-gmail" type="button" class="secondary">Read Gmail</button>
+      </div>
+      <p id="toolbar-note" class="help toolbar-note">Groups open into browsers, then Gmail accounts. Each tab keeps its own checks. Hide on a browser removes that browser from this list. Hide on a Gmail removes only that account.</p>
+      <div id="profile-list" class="profile-list"></div>
+      <p id="search-empty" class="help empty" hidden>No profiles match that search.</p>
+    </section>
+  </main>
+
+  <section class="activity">
+    <div id="activity-resize" class="activity-resize" role="separator" aria-orientation="horizontal" aria-label="Resize the activity log" aria-valuemin="88" aria-valuemax="150" aria-valuenow="150" tabindex="0"></div>
+    <div class="activity-head">
+      <h2>Activity</h2>
+    </div>
+    <div id="progress" class="progress" hidden>
+      <div id="progress-title"></div>
+      <div id="progress-detail"></div>
+    </div>
+    <ol id="log"></ol>
+  </section>
+
+  <div id="send-log-modal" class="modal-backdrop" hidden>
+    <div class="modal connections-modal" role="dialog" aria-modal="true" aria-labelledby="send-log-modal-title">
+      <h2 id="send-log-modal-title">Sent</h2>
+      <p id="send-log-modal-note" class="help"></p>
+      <div id="send-log-modal-body" class="analyse-results"></div>
+      <div class="modal-actions">
+        <button id="send-log-modal-close" type="button" class="secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="analyse-modal" class="modal-backdrop" hidden>
+    <div class="modal connections-modal" role="dialog" aria-modal="true" aria-labelledby="analyse-modal-title">
+      <h2 id="analyse-modal-title">Delivery reports</h2>
+      <div id="analyse-modal-body" class="analyse-results"></div>
+      <div class="modal-actions">
+        <button id="analyse-modal-close" type="button" class="secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="clients-modal" class="modal-backdrop" hidden>
+    <div class="modal connections-modal" role="dialog" aria-modal="true" aria-labelledby="clients-title">
+      <h2 id="clients-title">Client record</h2>
+      <p class="help">Each row is a person this app emailed. A bounced address is left off the next client send and the next follow-up. A reply is left off the next follow-up.</p>
+      <div id="clients-table" class="connections-table"></div>
+      <div class="modal-actions">
+        <button id="clients-close" type="button" class="secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="connections-modal" class="modal-backdrop" hidden>
+    <div class="modal connections-modal" role="dialog" aria-modal="true" aria-labelledby="connections-title">
+      <h2 id="connections-title">Gmail connections</h2>
+      <p class="help">Each row is two Gmail accounts that have already emailed each other. The connection stays until you clear it.</p>
+      <div id="connections-table" class="connections-table"></div>
+      <div class="modal-actions">
+        <button id="connections-close" type="button" class="secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

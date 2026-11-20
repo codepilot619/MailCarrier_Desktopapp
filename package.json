@@ -1,0 +1,73 @@
+{
+  "name": "mail-carrier",
+  "productName": "Mail Carrier",
+  "version": "1.3.7",
+  "private": true,
+  "description": "Send email through the Gmail accounts signed in to MoreLogin and Chrome profiles.",
+  "author": "Mail Carrier",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test",
+    "smoke": "node scripts/smoke.js",
+    "dist": "node scripts/build-installer.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.11.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.mailcarrier.desktop",
+    "productName": "Mail Carrier",
+    "executableName": "Mail Carrier",
+    "artifactName": "Mail-Carrier-Setup-${version}.${ext}",
+    "npmRebuild": false,
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "**/*",
+      "!scripts/**",
+      "!test/**",
+      "!dist/**",
+      "!build/**",
+      "!chrome-source.png",
+      "!layout-shot.png",
+      "!tree-check.png"
+    ],
+    "asarUnpack": [
+      "**/node_modules/puppeteer-core/**",
+      "**/node_modules/xlsx/**"
+    ],
+    "afterPack": "scripts/set-exe-icon.js",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mail Carrier",
+      "uninstallDisplayName": "Mail Carrier",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}
